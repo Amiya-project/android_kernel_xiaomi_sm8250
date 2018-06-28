@@ -787,7 +787,7 @@ union rcu_special {
 		u8			exp_hint; /* Hint for performance. */
 		u8			need_mb; /* Readers need smp_mb(). */
 	} b; /* Bits. */
-	u32 s; /* Set of bits. */
+	u16 s; /* Set of bits. */
 };
 
 enum perf_event_task_context {
