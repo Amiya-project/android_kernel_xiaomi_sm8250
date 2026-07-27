@@ -874,3 +874,9 @@ config MEMFD_ASHMEM_SHIM
 	  now memfds passed to them.
 
 	  Unless you are running Android, say N.
+
+config KSHRINK_SLABD
+	bool "Allow asynchronous shrink slab"
+	default n
+	help
+	  Asynchronous shrink slab memload optimization feature.
