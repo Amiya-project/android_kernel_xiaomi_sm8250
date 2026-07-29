@@ -927,6 +927,7 @@ static ssize_t down_rate_limit_us_show(struct gov_attr_set *attr_set, char *buf)
 static ssize_t up_rate_limit_us_store(struct gov_attr_set *attr_set,
 				      const char *buf, size_t count)
 {
+#ifndef CONFIG_SCHEDUTIL_DEFAULT_RATE_LIMITS
 	struct sugov_tunables *tunables = to_sugov_tunables(attr_set);
 	struct sugov_policy *sg_policy;
 	unsigned int rate_limit_us;
@@ -940,6 +941,7 @@ static ssize_t up_rate_limit_us_store(struct gov_attr_set *attr_set,
 		sg_policy->up_rate_delay_ns = rate_limit_us * NSEC_PER_USEC;
 		update_min_rate_limit_ns(sg_policy);
 	}
+#endif /* CONFIG_SCHEDUTIL_DEFAULT_RATE_LIMITS */
 
 	return count;
 }
@@ -947,6 +949,7 @@ static ssize_t up_rate_limit_us_store(struct gov_attr_set *attr_set,
 static ssize_t down_rate_limit_us_store(struct gov_attr_set *attr_set,
 					const char *buf, size_t count)
 {
+#ifndef CONFIG_SCHEDUTIL_DEFAULT_RATE_LIMITS
 	struct sugov_tunables *tunables = to_sugov_tunables(attr_set);
 	struct sugov_policy *sg_policy;
 	unsigned int rate_limit_us;
@@ -960,6 +963,7 @@ static ssize_t down_rate_limit_us_store(struct gov_attr_set *attr_set,
 		sg_policy->down_rate_delay_ns = rate_limit_us * NSEC_PER_USEC;
 		update_min_rate_limit_ns(sg_policy);
 	}
+#endif /* CONFIG_SCHEDUTIL_DEFAULT_RATE_LIMITS */
 
 	return count;
 }
@@ -1271,8 +1275,13 @@ static int sugov_init(struct cpufreq_policy *policy)
 		goto stop_kthread;
 	}
 
+#ifdef CONFIG_SCHEDUTIL_DEFAULT_RATE_LIMITS
 	tunables->up_rate_limit_us = 500;
 	tunables->down_rate_limit_us = 1000;
+#else
+	tunables->up_rate_limit_us = cpufreq_policy_transition_delay_us(policy);
+	tunables->down_rate_limit_us = cpufreq_policy_transition_delay_us(policy);
+#endif /* CONFIG_SCHEDUTIL_DEFAULT_RATE_LIMITS */
 	tunables->hispeed_load = DEFAULT_HISPEED_LOAD;
 	tunables->hispeed_freq = 0;
 

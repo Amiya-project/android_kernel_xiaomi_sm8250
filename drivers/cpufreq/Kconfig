@@ -220,6 +220,14 @@ config CPU_FREQ_GOV_SCHEDUTIL
 
 	  If in doubt, say N.
 
+config SCHEDUTIL_DEFAULT_RATE_LIMITS
+	bool "Enforce default rate limits for schedutil governor"
+	depends on CPU_FREQ_GOV_SCHEDUTIL
+	default n
+	help
+	  Enforces fixed up_rate_limit_us and down_rate_limit_us
+	  for schedutil governor, ignoring userspace sysfs write attempts.
+
 comment "CPU frequency scaling drivers"
 
 config CPUFREQ_DT
