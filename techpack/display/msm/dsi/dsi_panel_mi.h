@@ -287,6 +287,14 @@ struct dsi_panel_mi_cfg {
 
 	struct lockdowninfo_cfg lockdowninfo_read;
 
+	/* smart FPS control */
+	bool smart_fps_support;
+	bool smart_fps_restore;
+	u32 smart_fps_max_framerate;
+	u32 smart_fps_value;
+	u32 idle_fps;
+	bool idle_mode_flag;
+
 	bool dither_enabled;
 	u32 cabc_current_status;
 	u32 cabc_temp_status;

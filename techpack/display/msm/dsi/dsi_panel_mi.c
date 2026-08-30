@@ -27,6 +27,7 @@
 #include "dsi_mi_feature.h"
 #include "drm_mipi_dsi.h"
 #include "../../../../kernel/irq/internals.h"
+#include "xiaomi_frame_stat.h"
 
 #include "mi_disp_nvt_alpha_data.h"
 #include "mi_disp_lhbm.h"
@@ -294,6 +295,50 @@ static int dsi_panel_parse_white_point_config(struct dsi_panel *panel,
 			&mi_cfg->wp_info_len);
 	if (rc)
 		pr_info("failed to get mi,mdss-dsi-white-point-info-length\n");
+
+	return rc;
+}
+
+static int dsi_panel_parse_smart_fps_config(struct dsi_panel *panel,
+				struct device_node *of_node)
+{
+	int rc = 0;
+	struct dsi_parser_utils *utils = &panel->utils;
+	struct dsi_panel_mi_cfg *mi_cfg = &panel->mi_cfg;
+
+	mi_cfg->idle_mode_flag = true;
+
+	mi_cfg->smart_fps_support = utils->read_bool(of_node,
+			"mi,mdss-dsi-pan-enable-smart-fps");
+
+	if (mi_cfg->smart_fps_support) {
+		pr_info("smart fps is supported\n");
+
+		if (panel->dfps_caps.dfps_list_len > 1) {
+			mi_cfg->smart_fps_max_framerate =
+				panel->dfps_caps.max_refresh_rate;
+		} else {
+			rc = utils->read_u32(of_node,
+					"mi,mdss-dsi-smart-fps-max_framerate",
+					&mi_cfg->smart_fps_max_framerate);
+			if (rc) {
+				mi_cfg->smart_fps_max_framerate = 60;
+				pr_info("mi,mdss-dsi-smart-fps-max_framerate not defined\n");
+			} else {
+				pr_info("smart fps max framerate is %d\n",
+						mi_cfg->smart_fps_max_framerate);
+			}
+		}
+	}
+
+	rc = utils->read_u32(of_node, "mi,mdss-panel-idle-fps",
+			&mi_cfg->idle_fps);
+	if (rc) {
+		mi_cfg->idle_fps = 0;
+		pr_info("mi,mdss-panel-idle-fps not defined\n");
+	} else {
+		pr_info("idle fps is %d\n", mi_cfg->idle_fps);
+	}
 
 	return rc;
 }
@@ -772,6 +817,10 @@ skip_dimlayer_parse:
 			pr_info("mi,mdss-dsi-panel-fod-on-b2-index not defined\n");
 		}
 	}
+
+	rc = dsi_panel_parse_smart_fps_config(panel, of_node);
+	if (rc)
+		DSI_INFO("failed to parse smart fps configuration, rc=%d\n", rc);
 
 	mi_cfg->is_tddi_flag = utils->read_bool(of_node,
 			"mi,is-tddi-flag");
@@ -3439,6 +3488,7 @@ int dsi_panel_set_disp_param(struct dsi_panel *panel, u32 param)
 		&& (param & 0x0F000000) != DISPPARAM_FOD_BACKLIGHT_ON
 		&& (param & 0x0F000000) != DISPPARAM_FOD_BACKLIGHT_OFF
 		&& param != DISPPARAM_FOD_UNLOCK_SUCCESS
+		&& param != DISPPARAM_FOD_UNLOCK_FAIL
 		&& param != DISPPARAM_SET_THERMAL_HBM_DISABLE
 		&& param != DISPPARAM_CLEAR_THERMAL_HBM_DISABLE
 		&& (param & 0x0000F000) != DISPPARAM_LOW_BRIGHTNESS_FOD
@@ -3488,6 +3538,12 @@ int dsi_panel_set_disp_param(struct dsi_panel *panel, u32 param)
 			fod_lhbm_level = (param & 0xF);
 			param = (param & 0xFFFFFFF0);
 		}
+	}
+
+	/* set smart fps status */
+	if (param & 0xF0000000) {
+		fm_stat.enabled = param & 0x01;
+		pr_info("smart dfps enable = [%d]\n", fm_stat.enabled);
 	}
 
 	temp = param & 0x000000F0;
@@ -3732,15 +3788,15 @@ int dsi_panel_set_disp_param(struct dsi_panel *panel, u32 param)
 				if (panel->power_mode == SDE_MODE_DPMS_LP1 ||panel->power_mode == SDE_MODE_DPMS_LP2){
 					switch (mi_cfg->doze_brightness_state) {
 						case DOZE_BRIGHTNESS_HBM:
-							mi_dsi_update_lhbm_cmd_87reg(panel, DSI_CMD_SET_MI_FOD_LHBM_WHITE_1000NIT, mi_cfg->doze_hbm_dbv_level);
-							pr_info("DSI_CMD_SET_MI_FOD_LHBM_WHITE_1000NIT in doze_hbm_dbv_level\n");
+							mi_dsi_update_lhbm_cmd_87reg(panel, DSI_CMD_SET_MI_FOD_LHBM_WHITE_110NIT, mi_cfg->doze_hbm_dbv_level);
+							pr_info("DSI_CMD_SET_MI_FOD_LHBM_WHITE_110NIT in doze_hbm_dbv_level\n");
 							break;
 						case DOZE_BRIGHTNESS_LBM:
-							mi_dsi_update_lhbm_cmd_87reg(panel, DSI_CMD_SET_MI_FOD_LHBM_WHITE_1000NIT, mi_cfg->doze_lbm_dbv_level);
-							pr_info("DSI_CMD_SET_MI_FOD_LHBM_WHITE_1000NIT in doze_lbm_dbv_level\n");
+							mi_dsi_update_lhbm_cmd_87reg(panel, DSI_CMD_SET_MI_FOD_LHBM_WHITE_110NIT, mi_cfg->doze_lbm_dbv_level);
+							pr_info("DSI_CMD_SET_MI_FOD_LHBM_WHITE_110NIT in doze_lbm_dbv_level\n");
 							break;
 						default:
-							pr_info("DSI_CMD_SET_MI_FOD_LHBM_WHITE_1000NIT defaults\n");
+							pr_info("DSI_CMD_SET_MI_FOD_LHBM_WHITE_110NIT defaults\n");
 							break;
 					}
 				}
@@ -3959,10 +4015,6 @@ int dsi_panel_set_disp_param(struct dsi_panel *panel, u32 param)
 		pr_info("Fod fingerprint unlock fail\n");
 		mi_cfg->sysfs_fod_unlock_success = false;
 		mi_cfg->into_aod_pending = false;
-		if(mi_cfg->local_hbm_enabled){
-			rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_MI_FOD_LHBM_OFF);
-			mi_cfg->local_hbm_cur_status = false;
-		}
 		if (panel->power_mode == SDE_MODE_DPMS_LP1 ||
 				panel->power_mode == SDE_MODE_DPMS_LP2) {
 			cancel_delayed_work(&mi_cfg->enter_aod_delayed_work);
@@ -4121,6 +4173,14 @@ int dsi_panel_set_disp_param(struct dsi_panel *panel, u32 param)
 		pr_info("dither off\n");
 		mi_cfg->dither_enabled = false;
 		break;
+	case DISPPARAM_DFPS_IDLE_ON:
+		pr_info("idle on\n");
+		mi_cfg->idle_mode_flag = true;
+		break;
+	case DISPPARAM_DFPS_IDLE_OFF:
+		pr_info("idle off\n");
+		mi_cfg->idle_mode_flag = false;
+		break;
 	case DISPPARAM_SET_THERMAL_HBM_DISABLE:
 		pr_info("set thermal hbm disable\n");
 		mi_cfg->thermal_hbm_disabled = true;
@@ -4135,6 +4195,34 @@ int dsi_panel_set_disp_param(struct dsi_panel *panel, u32 param)
 
 	temp = param & 0xF0000000;
 	switch (temp) {
+	case DISPPARAM_DFPS_LEVEL1:
+		DSI_INFO("DFPS:30fps\n");
+		mi_cfg->smart_fps_restore = true;
+		break;
+	case DISPPARAM_DFPS_LEVEL2:
+		DSI_INFO("DFPS:48fps\n");
+		mi_cfg->smart_fps_restore = true;
+		break;
+	case DISPPARAM_DFPS_LEVEL3:
+		DSI_INFO("DFPS:50fps\n");
+		mi_cfg->smart_fps_restore = true;
+		break;
+	case DISPPARAM_DFPS_LEVEL4:
+		DSI_INFO("DFPS:60fps\n");
+		mi_cfg->smart_fps_restore = true;
+		break;
+	case DISPPARAM_DFPS_LEVEL5:
+		DSI_INFO("DFPS:90fps\n");
+		mi_cfg->smart_fps_restore = true;
+		break;
+	case DISPPARAM_DFPS_LEVEL6:
+		DSI_INFO("DFPS:120fps\n");
+		mi_cfg->smart_fps_restore = true;
+		break;
+	case DISPPARAM_DFPS_LEVEL7:
+		DSI_INFO("DFPS:144fps\n");
+		mi_cfg->smart_fps_restore = true;
+		break;
 	case DISPPARAM_GIR_ON:
 		if (panel->mi_cfg.panel_id == 0x4C334100420200 && panel->mi_cfg.in_aod) {
 			DSI_INFO("In AOD, skip gir on \n");
@@ -4155,4 +4243,3 @@ exit:
 	mutex_unlock(&panel->panel_lock);
 	return rc;
 }
-

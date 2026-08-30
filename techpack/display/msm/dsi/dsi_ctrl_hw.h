@@ -647,6 +647,12 @@ struct dsi_ctrl_hw_ops {
 	void (*clear_interrupt_status)(struct dsi_ctrl_hw *ctrl, u32 ints);
 
 	/**
+	 * poll_slave_dma_status()- API to poll slave DMA status
+	 * @ctrl:                 Pointer to the controller host hardware.
+	 */
+	u32 (*poll_slave_dma_status)(struct dsi_ctrl_hw *ctrl);
+
+	/**
 	 * enable_status_interrupts() - enable the specified interrupts
 	 * @ctrl:          Pointer to the controller host hardware.
 	 * @ints:          List of interrupts to be enabled.
@@ -832,6 +838,13 @@ struct dsi_ctrl_hw_ops {
 	 * @ctrl:         Pointer to the controller host hardware.
 	 */
 	int (*wait4dynamic_refresh_done)(struct dsi_ctrl_hw *ctrl);
+
+	/**
+	 * hw.ops.vid_engine_busy() - return true if the video engine is busy
+	 * @ctrl: Pointer to the controller host hardware.
+	 */
+	bool (*vid_engine_busy)(struct dsi_ctrl_hw *ctrl);
+
 	/**
 	 * hw.ops.hs_req_sel() - enable continuous clk support through phy
 	 * @ctrl:	Pointer to the controller host hardware.
@@ -872,6 +885,15 @@ struct dsi_ctrl_hw_ops {
 	 * @cfg:	Common configuration parameters.
 	 */
 	void (*reset_trig_ctrl)(struct dsi_ctrl_hw *ctrl,
+			struct dsi_host_common_cfg *cfg);
+
+	/**
+	 * hw.ops.init_cmddma_trig_ctrl() - initialize the default trigger for
+	 * command-mode DMA
+	 * @ctrl: Pointer to the controller host hardware.
+	 * @cfg: Common configuration parameters.
+	 */
+	void (*init_cmddma_trig_ctrl)(struct dsi_ctrl_hw *ctrl,
 			struct dsi_host_common_cfg *cfg);
 };
 

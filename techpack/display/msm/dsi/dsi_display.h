@@ -276,6 +276,7 @@ struct dsi_display {
 	bool queue_cmd_waits;
 	struct workqueue_struct *dma_cmd_workq;
 	atomic_t fod_ui;
+	bool enabled;
 };
 
 int dsi_display_dev_probe(struct platform_device *pdev);

@@ -19,6 +19,8 @@
 #include <drm/drm_sysfs.h>
 #include <drm/drmP.h>
 #include "drm_internal.h"
+#include "drm_internal_mi.h"
+#include <drm/msm_drm_pp.h>
 
 #define to_drm_minor(d) dev_get_drvdata(d)
 #define to_drm_connector(d) dev_get_drvdata(d)
@@ -42,6 +44,11 @@ static struct device_type drm_sysfs_device_minor = {
 };
 
 struct class *drm_class;
+struct drm_msm_pcc color_transform_pcc_cfg = {
+	.r.r = 32768,
+	.g.g = 32768,
+	.b.b = 32768,
+};
 
 static char *drm_devnode(struct device *dev, umode_t *mode)
 {
@@ -227,6 +234,176 @@ static ssize_t modes_show(struct device *device,
 	return written;
 }
 
+static ssize_t disp_param_show(struct device *device,
+			   struct device_attribute *attr, char *buf)
+{
+	u32 param;
+
+	dsi_display_get_disp_param(to_drm_connector(device), &param);
+	return scnprintf(buf, PAGE_SIZE, "0x%08X\n", param);
+}
+
+static ssize_t mipi_reg_store(struct device *device,
+			   struct device_attribute *attr,
+			   const char *buf, size_t count)
+{
+	ssize_t ret = dsi_display_write_mipi_reg(to_drm_connector(device),
+				(char *)buf);
+
+	return ret < 0 ? ret : count;
+}
+
+static ssize_t mipi_reg_show(struct device *device,
+			   struct device_attribute *attr, char *buf)
+{
+	return dsi_display_read_mipi_reg(to_drm_connector(device), buf);
+}
+
+static ssize_t oled_pmic_id_show(struct device *device,
+			   struct device_attribute *attr, char *buf)
+{
+	return dsi_display_read_oled_pmic_id(to_drm_connector(device), buf);
+}
+
+static ssize_t panel_info_show(struct device *device,
+			   struct device_attribute *attr, char *buf)
+{
+	return dsi_display_read_panel_info(to_drm_connector(device), buf);
+}
+
+static ssize_t wp_info_show(struct device *device,
+			   struct device_attribute *attr, char *buf)
+{
+	return dsi_display_read_wp_info(to_drm_connector(device), buf);
+}
+
+static ssize_t dynamic_fps_show(struct device *device,
+			   struct device_attribute *attr, char *buf)
+{
+	return dsi_display_read_dynamic_fps(to_drm_connector(device), buf);
+}
+
+static ssize_t doze_brightness_store(struct device *device,
+			   struct device_attribute *attr,
+			   const char *buf, size_t count)
+{
+	int brightness;
+	int ret = kstrtoint(buf, 0, &brightness);
+
+	if (ret)
+		return ret;
+	ret = dsi_display_set_doze_brightness(to_drm_connector(device),
+			brightness);
+	return ret ? ret : count;
+}
+
+static ssize_t doze_brightness_show(struct device *device,
+			   struct device_attribute *attr, char *buf)
+{
+	return dsi_display_get_doze_brightness(to_drm_connector(device), buf);
+}
+
+static ssize_t fod_ui_ready_show(struct device *device,
+			   struct device_attribute *attr, char *buf)
+{
+	return dsi_display_fod_get(to_drm_connector(device), buf);
+}
+
+static ssize_t thermal_hbm_disabled_store(struct device *device,
+			   struct device_attribute *attr,
+			   const char *buf, size_t count)
+{
+	bool disabled;
+	int ret = kstrtobool(buf, &disabled);
+
+	if (ret)
+		return ret;
+	ret = dsi_display_set_thermal_hbm_disabled(to_drm_connector(device),
+				disabled);
+	return ret ? ret : count;
+}
+
+static ssize_t thermal_hbm_disabled_show(struct device *device,
+			   struct device_attribute *attr, char *buf)
+{
+	bool disabled;
+	int ret = dsi_display_get_thermal_hbm_disabled(
+			to_drm_connector(device), &disabled);
+
+	if (ret)
+		return ret;
+	return scnprintf(buf, PAGE_SIZE, "%d\n", disabled);
+}
+
+static ssize_t disp_pcc_store(struct device *device,
+			   struct device_attribute *attr,
+			   const char *buf, size_t count)
+{
+	int ret;
+	int parsed;
+
+	parsed = sscanf(buf,
+			"pcc_cfg_r_c=%u\n"
+			"pcc_cfg_r_r=%u\n"
+			"pcc_cfg_r_g=%u\n"
+			"pcc_cfg_r_b=%u\n"
+			"pcc_cfg_g_c=%u\n"
+			"pcc_cfg_g_r=%u\n"
+			"pcc_cfg_g_g=%u\n"
+			"pcc_cfg_g_b=%u\n"
+			"pcc_cfg_b_c=%u\n"
+			"pcc_cfg_b_r=%u\n"
+			"pcc_cfg_b_g=%u\n"
+			"pcc_cfg_b_b=%u\n",
+			&color_transform_pcc_cfg.r.c,
+			&color_transform_pcc_cfg.r.r,
+			&color_transform_pcc_cfg.r.g,
+			&color_transform_pcc_cfg.r.b,
+			&color_transform_pcc_cfg.g.c,
+			&color_transform_pcc_cfg.g.r,
+			&color_transform_pcc_cfg.g.g,
+			&color_transform_pcc_cfg.g.b,
+			&color_transform_pcc_cfg.b.c,
+			&color_transform_pcc_cfg.b.r,
+			&color_transform_pcc_cfg.b.g,
+			&color_transform_pcc_cfg.b.b);
+	if (parsed != 12)
+		return -EINVAL;
+
+	ret = 0;
+	return ret ? ret : count;
+}
+
+static ssize_t disp_pcc_show(struct device *device,
+			   struct device_attribute *attr, char *buf)
+{
+	return scnprintf(buf, PAGE_SIZE,
+			"pcc_cfg_r_c=%u\n"
+			"pcc_cfg_r_r=%u\n"
+			"pcc_cfg_r_g=%u\n"
+			"pcc_cfg_r_b=%u\n"
+			"pcc_cfg_g_c=%u\n"
+			"pcc_cfg_g_r=%u\n"
+			"pcc_cfg_g_g=%u\n"
+			"pcc_cfg_g_b=%u\n"
+			"pcc_cfg_b_c=%u\n"
+			"pcc_cfg_b_r=%u\n"
+			"pcc_cfg_b_g=%u\n"
+			"pcc_cfg_b_b=%u\n",
+			color_transform_pcc_cfg.r.c,
+			color_transform_pcc_cfg.r.r,
+			color_transform_pcc_cfg.r.g,
+			color_transform_pcc_cfg.r.b,
+			color_transform_pcc_cfg.g.c,
+			color_transform_pcc_cfg.g.r,
+			color_transform_pcc_cfg.g.g,
+			color_transform_pcc_cfg.g.b,
+			color_transform_pcc_cfg.b.c,
+			color_transform_pcc_cfg.b.r,
+			color_transform_pcc_cfg.b.g,
+			color_transform_pcc_cfg.b.b);
+}
+
 int dsi_display_set_disp_param(struct drm_connector *connector,
 		u32 param_type);
 static ssize_t disp_param_store(struct device *device,
@@ -265,7 +442,16 @@ static DEVICE_ATTR_RW(status);
 static DEVICE_ATTR_RO(enabled);
 static DEVICE_ATTR_RO(dpms);
 static DEVICE_ATTR_RO(modes);
-static DEVICE_ATTR_WO(disp_param);
+static DEVICE_ATTR_RW(disp_param);
+static DEVICE_ATTR_RW(mipi_reg);
+static DEVICE_ATTR_RO(oled_pmic_id);
+static DEVICE_ATTR_RO(panel_info);
+static DEVICE_ATTR_RO(wp_info);
+static DEVICE_ATTR_RO(dynamic_fps);
+static DEVICE_ATTR_RW(doze_brightness);
+static DEVICE_ATTR_RO(fod_ui_ready);
+static DEVICE_ATTR_RW(thermal_hbm_disabled);
+static DEVICE_ATTR_RW(disp_pcc);
 
 static struct attribute *connector_dev_attrs[] = {
 	&dev_attr_status.attr,
@@ -273,6 +459,15 @@ static struct attribute *connector_dev_attrs[] = {
 	&dev_attr_dpms.attr,
 	&dev_attr_modes.attr,
 	&dev_attr_disp_param.attr,
+	&dev_attr_mipi_reg.attr,
+	&dev_attr_oled_pmic_id.attr,
+	&dev_attr_panel_info.attr,
+	&dev_attr_wp_info.attr,
+	&dev_attr_dynamic_fps.attr,
+	&dev_attr_doze_brightness.attr,
+	&dev_attr_fod_ui_ready.attr,
+	&dev_attr_thermal_hbm_disabled.attr,
+	&dev_attr_disp_pcc.attr,
 	NULL
 };
 
