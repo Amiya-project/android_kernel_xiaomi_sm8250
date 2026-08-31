@@ -405,6 +405,14 @@ ssize_t dsi_panel_read_wp_info(struct dsi_panel *panel, char *buf);
 int dsi_panel_set_doze_brightness(struct dsi_panel *panel,
 				int doze_brightness, bool need_panel_lock);
 
+ssize_t dsi_panel_get_doze_brightness(struct dsi_panel *panel, char *buf);
+
+int dsi_panel_set_thermal_hbm_disabled(struct dsi_panel *panel,
+				bool thermal_hbm_disabled);
+
+int dsi_panel_get_thermal_hbm_disabled(struct dsi_panel *panel,
+				bool *thermal_hbm_disabled);
+
 int dsi_panel_update_elvss_dimming(struct dsi_panel *panel);
 
 int dsi_panel_read_greenish_gamma_setting(struct dsi_panel *panel);

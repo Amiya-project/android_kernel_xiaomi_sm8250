@@ -745,11 +745,37 @@ int dsi_host_alloc_cmd_tx_buffer(struct dsi_display *display);
 int dsi_display_hbm_set_disp_param(struct drm_connector *connector,
 				u32 param_type);
 
+int dsi_display_get_disp_param(struct drm_connector *connector,
+				u32 *param_type);
+ssize_t dsi_display_write_mipi_reg(struct drm_connector *connector,
+				char *buf);
+ssize_t dsi_display_read_mipi_reg(struct drm_connector *connector,
+				char *buf);
+ssize_t dsi_display_read_oled_pmic_id(struct drm_connector *connector,
+				char *buf);
+ssize_t dsi_display_read_panel_info(struct drm_connector *connector,
+				char *buf);
+ssize_t dsi_display_read_wp_info(struct drm_connector *connector,
+				char *buf);
+ssize_t dsi_display_read_dynamic_fps(struct drm_connector *connector,
+				char *buf);
+int dsi_display_set_doze_brightness(struct drm_connector *connector,
+				int doze_brightness);
+ssize_t dsi_display_get_doze_brightness(struct drm_connector *connector,
+				char *buf);
+ssize_t dsi_display_fod_get(struct drm_connector *connector, char *buf);
+int dsi_display_set_thermal_hbm_disabled(struct drm_connector *connector,
+				bool thermal_hbm_disabled);
+int dsi_display_get_thermal_hbm_disabled(struct drm_connector *connector,
+				bool *thermal_hbm_disabled);
+
 int dsi_display_esd_irq_ctrl(struct dsi_display *display,
 		bool enable);
 
 struct dsi_display *get_main_display(void);
 
 void dsi_display_set_fod_ui(struct dsi_display *display, bool status);
+
+char *dsi_display_get_cmdline_panel_info(void);
 
 #endif /* _DSI_DISPLAY_H_ */

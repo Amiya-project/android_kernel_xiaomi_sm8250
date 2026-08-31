@@ -3160,6 +3160,21 @@ exit:
 	return rc;
 }
 
+ssize_t dsi_panel_get_doze_brightness(struct dsi_panel *panel, char *buf)
+{
+	ssize_t count;
+
+	if (!panel || !buf)
+		return -EINVAL;
+
+	mutex_lock(&panel->panel_lock);
+	count = scnprintf(buf, PAGE_SIZE, "%d\n",
+			panel->mi_cfg.doze_brightness_state);
+	mutex_unlock(&panel->panel_lock);
+
+	return count;
+}
+
 int dsi_panel_lockdowninfo_param_read(struct dsi_panel *panel)
 {
 	int rc = 0;
@@ -3373,6 +3388,51 @@ int mi_dsi_panel_set_fod_brightness(struct mipi_dsi_device *dsi, u16 brightness)
 				 payload, sizeof(payload));
 	if (err < 0)
 		return err;
+
+	return 0;
+}
+
+int dsi_panel_set_thermal_hbm_disabled(struct dsi_panel *panel,
+			bool thermal_hbm_disabled)
+{
+	struct dsi_panel_mi_cfg *mi_cfg;
+	int ret = 0;
+
+	if (!panel)
+		return -EINVAL;
+
+	mi_cfg = &panel->mi_cfg;
+	if (thermal_hbm_disabled) {
+		dsi_panel_set_disp_param(panel, DISPPARAM_SET_THERMAL_HBM_DISABLE);
+		if (mi_cfg->hbm_enabled && panel->panel_initialized) {
+			dsi_panel_set_disp_param(panel,
+				DISPPARAM_HBM_OFF | DISPPARAM_THERMAL_SET);
+			if (mi_cfg->hbm_brightness)
+				ret = dsi_panel_update_backlight(panel, 2047);
+		}
+	} else {
+		dsi_panel_set_disp_param(panel, DISPPARAM_CLEAR_THERMAL_HBM_DISABLE);
+		if (mi_cfg->hbm_enabled && panel->panel_initialized) {
+			dsi_panel_set_disp_param(panel,
+				DISPPARAM_HBM_ON | DISPPARAM_THERMAL_SET);
+			if (mi_cfg->hbm_brightness)
+				ret = dsi_panel_update_backlight(panel,
+						mi_cfg->last_bl_level);
+		}
+	}
+
+	return ret;
+}
+
+int dsi_panel_get_thermal_hbm_disabled(struct dsi_panel *panel,
+			bool *thermal_hbm_disabled)
+{
+	if (!panel || !thermal_hbm_disabled)
+		return -EINVAL;
+
+	mutex_lock(&panel->panel_lock);
+	*thermal_hbm_disabled = panel->mi_cfg.thermal_hbm_disabled;
+	mutex_unlock(&panel->panel_lock);
 
 	return 0;
 }

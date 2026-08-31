@@ -8176,6 +8176,29 @@ struct dsi_display *get_main_display(void) {
 	return primary_display;
 }
 
+char *dsi_display_get_cmdline_panel_info(void)
+{
+	char *buffer;
+	char *panel_name;
+	char *result = NULL;
+
+	buffer = kstrdup(dsi_display_primary, GFP_KERNEL);
+	if (!buffer)
+		return NULL;
+
+	panel_name = strrchr(buffer, ',');
+	if (panel_name && *panel_name) {
+		panel_name++;
+		panel_name = strim(panel_name);
+		panel_name = strsep(&panel_name, ":");
+		if (panel_name)
+			result = kstrdup(panel_name, GFP_KERNEL);
+	}
+
+	kfree(buffer);
+	return result;
+}
+
 static int __init dsi_display_register(void)
 {
 	dsi_phy_drv_register();
