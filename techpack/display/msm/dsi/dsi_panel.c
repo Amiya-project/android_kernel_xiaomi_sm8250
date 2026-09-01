@@ -914,9 +914,9 @@ int dsi_panel_set_fod_hbm(struct dsi_panel *panel, bool status)
 	int rc = 0;
 
 	if (status) {
-		dsi_panel_set_disp_param(panel, DISPPARAM_HBM_FOD_ON);
+		rc = dsi_panel_set_disp_param(panel, DISPPARAM_HBM_FOD_ON);
 	} else {
-		dsi_panel_set_disp_param(panel, DISPPARAM_HBM_FOD_OFF);
+		rc = dsi_panel_set_disp_param(panel, DISPPARAM_HBM_FOD_OFF);
 	}
 
 	return rc;

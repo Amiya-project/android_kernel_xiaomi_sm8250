@@ -213,10 +213,39 @@ static ssize_t brightness_store(struct device *dev,
 
 	bd->usr_brightness_req = brightness;
 	rc = backlight_device_set_brightness(bd, brightness);
+	if (!rc && bd->props.brightness_clone != brightness) {
+		bd->props.brightness_clone_backup = brightness;
+		bd->props.brightness_clone = brightness;
+		sysfs_notify(&bd->dev.kobj, NULL, "brightness_clone");
+	}
 
 	return rc ? rc : count;
 }
 static DEVICE_ATTR_RW(brightness);
+
+static ssize_t bl_df_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct backlight_device *bd = to_backlight_device(dev);
+	unsigned long brightness;
+	int rc;
+
+	rc = kstrtoul(buf, 0, &brightness);
+	if (rc)
+		return rc;
+
+	rc = backlight_device_set_brightness(bd, brightness);
+	return rc ? rc : count;
+}
+
+static ssize_t bl_df_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct backlight_device *bd = to_backlight_device(dev);
+
+	return sprintf(buf, "%d\n", bd->props.brightness);
+}
+static DEVICE_ATTR_RW(bl_df);
 
 static ssize_t type_show(struct device *dev, struct device_attribute *attr,
 		char *buf)
@@ -294,12 +323,42 @@ static void bl_device_release(struct device *dev)
 	kfree(bd);
 }
 
+static ssize_t brightness_clone_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct backlight_device *bd = to_backlight_device(dev);
+
+	return snprintf(buf, PAGE_SIZE, "%d\n", bd->props.brightness_clone);
+}
+
+static ssize_t brightness_clone_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct backlight_device *bd = to_backlight_device(dev);
+	unsigned long brightness;
+	int rc;
+
+	rc = kstrtoul(buf, 0, &brightness);
+	if (rc)
+		return rc;
+
+	bd->props.brightness_clone_backup = brightness;
+	bd->props.brightness_clone = brightness;
+	sysfs_notify(&bd->dev.kobj, NULL, "brightness_clone");
+
+	return count;
+}
+
+static DEVICE_ATTR_RW(brightness_clone);
+
 static struct attribute *bl_device_attrs[] = {
 	&dev_attr_bl_power.attr,
 	&dev_attr_brightness.attr,
 	&dev_attr_actual_brightness.attr,
 	&dev_attr_max_brightness.attr,
 	&dev_attr_type.attr,
+	&dev_attr_brightness_clone.attr,
+	&dev_attr_bl_df.attr,
 	NULL,
 };
 ATTRIBUTE_GROUPS(bl_device);
